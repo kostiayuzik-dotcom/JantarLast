@@ -2,18 +2,16 @@ package pl.jantar.kadryonline
 
 import android.app.Activity
 import android.os.Bundle
-import android.webkit.CookieManager
-import android.webkit.WebChromeClient
-import android.webkit.WebResourceRequest
-import android.webkit.WebView
-import android.webkit.WebViewClient
-import android.webkit.WebSettings
-import android.widget.Toast
 import android.graphics.Color
+import android.view.Gravity
+import android.webkit.*
+import android.widget.LinearLayout
+import android.widget.TextView
 
 class MainActivity : Activity() {
 
     private lateinit var webView: WebView
+    private lateinit var status: TextView
 
     private val portalUrl =
         "https://kadryonline.jantar.eu.com/xpertis/prv/view/0x915ac1"
@@ -21,77 +19,117 @@ class MainActivity : Activity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
+        val layout = LinearLayout(this)
+        layout.orientation = LinearLayout.VERTICAL
+        layout.setBackgroundColor(Color.WHITE)
+
+        status = TextView(this)
+        status.text = "Uruchamianie Jantar Kadry..."
+        status.textSize = 14f
+        status.setTextColor(Color.BLACK)
+        status.setPadding(12, 12, 12, 12)
+
         webView = WebView(this)
-        webView.setBackgroundColor(Color.WHITE)
-        setContentView(webView)
+
+        layout.addView(status)
+        layout.addView(
+            webView,
+            LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT,
+                0,
+                1f
+            )
+        )
+
+        setContentView(layout)
 
         webView.settings.apply {
             javaScriptEnabled = true
             domStorageEnabled = true
             databaseEnabled = true
-
-            loadsImagesAutomatically = true
-            javaScriptCanOpenWindowsAutomatically = true
-            setSupportMultipleWindows(true)
-
             useWideViewPort = true
             loadWithOverviewMode = true
-
             builtInZoomControls = true
             displayZoomControls = false
-
+            javaScriptCanOpenWindowsAutomatically = true
+            setSupportMultipleWindows(true)
             mixedContentMode =
                 WebSettings.MIXED_CONTENT_COMPATIBILITY_MODE
-
-            userAgentString =
-                "Mozilla/5.0 (Windows NT 10.0; Win64; x64) " +
-                "AppleWebKit/537.36 (KHTML, like Gecko) " +
-                "Chrome/120.0.0.0 Safari/537.36"
         }
 
         CookieManager.getInstance().setAcceptCookie(true)
         CookieManager.getInstance()
             .setAcceptThirdPartyCookies(webView, true)
 
-        webView.webChromeClient = WebChromeClient()
+        webView.webChromeClient = object : WebChromeClient() {
+
+            override fun onConsoleMessage(
+                consoleMessage: ConsoleMessage
+            ): Boolean {
+                status.text =
+                    "JavaScript: ${consoleMessage.message()}"
+                return true
+            }
+        }
 
         webView.webViewClient = object : WebViewClient() {
+
+            override fun onPageStarted(
+                view: WebView?,
+                url: String?,
+                favicon: android.graphics.Bitmap?
+            ) {
+                status.text = "Ładowanie: $url"
+            }
 
             override fun onPageFinished(
                 view: WebView?,
                 url: String?
             ) {
-                super.onPageFinished(view, url)
-            }
-
-            override fun shouldOverrideUrlLoading(
-                view: WebView?,
-                request: WebResourceRequest?
-            ): Boolean {
-                return false
+                status.text = "Adres: $url"
             }
 
             override fun onReceivedError(
                 view: WebView?,
                 request: WebResourceRequest?,
-                error: android.webkit.WebResourceError?
+                error: WebResourceError?
             ) {
-                super.onReceivedError(view, request, error)
-
                 if (request?.isForMainFrame == true) {
-                    Toast.makeText(
-                        this@MainActivity,
-                        "Nie można załadować strony. Sprawdź internet.",
-                        Toast.LENGTH_LONG
-                    ).show()
+                    status.text =
+                        "BŁĄD STRONY:\n" +
+                        "Kod: ${error?.errorCode}\n" +
+                        "Opis: ${error?.description}\n" +
+                        "Adres: ${request.url}"
                 }
+            }
+
+            override fun onReceivedHttpError(
+                view: WebView?,
+                request: WebResourceRequest?,
+                errorResponse: WebResourceResponse?
+            ) {
+                if (request?.isForMainFrame == true) {
+                    status.text =
+                        "HTTP ERROR: ${errorResponse?.statusCode}\n" +
+                        "Adres: ${request.url}"
+                }
+            }
+
+            override fun onReceivedSslError(
+                view: WebView?,
+                handler: SslErrorHandler?,
+                error: android.net.http.SslError?
+            ) {
+                status.text =
+                    "BŁĄD SSL:\n${error?.toString()}"
+                handler?.cancel()
             }
         }
 
+        status.text = "Otwieranie portalu..."
         webView.loadUrl(portalUrl)
     }
 
-    @Deprecated("Deprecated in Android")
     override fun onBackPressed() {
         if (webView.canGoBack()) {
             webView.goBack()
