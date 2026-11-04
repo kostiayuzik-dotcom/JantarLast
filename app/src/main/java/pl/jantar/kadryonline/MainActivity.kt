@@ -7,11 +7,16 @@ import android.webkit.WebChromeClient
 import android.webkit.WebResourceRequest
 import android.webkit.WebView
 import android.webkit.WebViewClient
+import android.webkit.WebSettings
+import android.widget.Toast
 import android.graphics.Color
 
 class MainActivity : Activity() {
 
     private lateinit var webView: WebView
+
+    private val portalUrl =
+        "https://kadryonline.jantar.eu.com/xpertis/prv/view/0x915ac1"
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -24,20 +29,38 @@ class MainActivity : Activity() {
             javaScriptEnabled = true
             domStorageEnabled = true
             databaseEnabled = true
+
             loadsImagesAutomatically = true
             javaScriptCanOpenWindowsAutomatically = true
             setSupportMultipleWindows(true)
-            mixedContentMode = android.webkit.WebSettings.MIXED_CONTENT_COMPATIBILITY_MODE
-            userAgentString = userAgentString + " Chrome/120.0.0.0"
+
+            useWideViewPort = true
+            loadWithOverviewMode = true
+
+            builtInZoomControls = true
+            displayZoomControls = false
+
+            mixedContentMode =
+                WebSettings.MIXED_CONTENT_COMPATIBILITY_MODE
+
+            userAgentString =
+                "Mozilla/5.0 (Windows NT 10.0; Win64; x64) " +
+                "AppleWebKit/537.36 (KHTML, like Gecko) " +
+                "Chrome/120.0.0.0 Safari/537.36"
         }
 
         CookieManager.getInstance().setAcceptCookie(true)
-        CookieManager.getInstance().setAcceptThirdPartyCookies(webView, true)
+        CookieManager.getInstance()
+            .setAcceptThirdPartyCookies(webView, true)
 
         webView.webChromeClient = WebChromeClient()
 
         webView.webViewClient = object : WebViewClient() {
-            override fun onPageFinished(view: WebView?, url: String?) {
+
+            override fun onPageFinished(
+                view: WebView?,
+                url: String?
+            ) {
                 super.onPageFinished(view, url)
             }
 
@@ -47,9 +70,25 @@ class MainActivity : Activity() {
             ): Boolean {
                 return false
             }
+
+            override fun onReceivedError(
+                view: WebView?,
+                request: WebResourceRequest?,
+                error: android.webkit.WebResourceError?
+            ) {
+                super.onReceivedError(view, request, error)
+
+                if (request?.isForMainFrame == true) {
+                    Toast.makeText(
+                        this@MainActivity,
+                        "Nie można załadować strony. Sprawdź internet.",
+                        Toast.LENGTH_LONG
+                    ).show()
+                }
+            }
         }
 
-        webView.loadUrl("https://kadryonline.jantar.eu.com/xpertis/prv/view/0x915ac1")
+        webView.loadUrl(portalUrl)
     }
 
     @Deprecated("Deprecated in Android")
@@ -59,5 +98,10 @@ class MainActivity : Activity() {
         } else {
             super.onBackPressed()
         }
+    }
+
+    override fun onDestroy() {
+        webView.destroy()
+        super.onDestroy()
     }
 }
