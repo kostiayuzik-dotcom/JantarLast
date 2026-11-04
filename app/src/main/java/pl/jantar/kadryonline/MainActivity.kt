@@ -13,7 +13,7 @@ class MainActivity : Activity() {
     private lateinit var status: TextView
 
     private val portalUrl =
-        "https://kadryonline.jantar.eu.com/xpertis/start"
+        "https://kadryonline.jantar.eu.com/xpertis/prv/view/0x915ac1"
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -25,7 +25,7 @@ class MainActivity : Activity() {
 
         status = TextView(this).apply {
             text = "Uruchamianie Jantar Kadry..."
-            textSize = 13f
+            textSize = 12f
             setTextColor(Color.BLACK)
             setPadding(12, 12, 12, 12)
         }
@@ -48,24 +48,20 @@ class MainActivity : Activity() {
             javaScriptEnabled = true
             domStorageEnabled = true
             databaseEnabled = true
-            loadsImagesAutomatically = true
 
+            loadsImagesAutomatically = true
             useWideViewPort = true
             loadWithOverviewMode = true
 
             builtInZoomControls = true
             displayZoomControls = false
+            setSupportZoom(true)
 
             javaScriptCanOpenWindowsAutomatically = true
             setSupportMultipleWindows(true)
 
             mixedContentMode =
                 WebSettings.MIXED_CONTENT_COMPATIBILITY_MODE
-
-            userAgentString =
-                "Mozilla/5.0 (Linux; Android 16) " +
-                "AppleWebKit/537.36 (KHTML, like Gecko) " +
-                "Chrome/120.0.0.0 Mobile Safari/537.36"
         }
 
         CookieManager.getInstance().setAcceptCookie(true)
@@ -80,7 +76,9 @@ class MainActivity : Activity() {
                 status.text =
                     "JAVASCRIPT ERROR:\n" +
                     consoleMessage.message() +
-                    "\nLine: " + consoleMessage.lineNumber()
+                    "\nLine: " +
+                    consoleMessage.lineNumber()
+
                 return true
             }
         }
@@ -92,7 +90,7 @@ class MainActivity : Activity() {
                 url: String?,
                 favicon: android.graphics.Bitmap?
             ) {
-                status.text = "Ładowanie:\n$url"
+                status.text = "Ładowanie strony:\n$url"
             }
 
             override fun onPageFinished(
@@ -101,7 +99,7 @@ class MainActivity : Activity() {
             ) {
                 status.text =
                     "Adres: $url\n" +
-                    "Title: ${view?.title ?: "null"}"
+                    "Title: ${view?.title ?: "brak"}"
             }
 
             override fun onReceivedError(
@@ -144,7 +142,7 @@ class MainActivity : Activity() {
     }
 
     override fun onBackPressed() {
-        if (webView.canGoBack()) {
+        if (::webView.isInitialized && webView.canGoBack()) {
             webView.goBack()
         } else {
             super.onBackPressed()
@@ -152,7 +150,9 @@ class MainActivity : Activity() {
     }
 
     override fun onDestroy() {
-        webView.destroy()
+        if (::webView.isInitialized) {
+            webView.destroy()
+        }
         super.onDestroy()
     }
 }
