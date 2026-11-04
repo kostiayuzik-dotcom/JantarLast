@@ -6,6 +6,7 @@ import android.graphics.Color
 import android.webkit.*
 import android.widget.LinearLayout
 import android.widget.TextView
+import android.widget.ScrollView
 
 class MainActivity : Activity() {
 
@@ -14,6 +15,15 @@ class MainActivity : Activity() {
 
     private val portalUrl =
         "https://kadryonline.jantar.eu.com/xpertis/prv/view/0x915ac1"
+
+    private val logs = StringBuilder()
+
+    private fun addLog(message: String) {
+        runOnUiThread {
+            logs.append("\n").append(message)
+            status.text = logs.toString()
+        }
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -24,15 +34,25 @@ class MainActivity : Activity() {
         }
 
         status = TextView(this).apply {
-            text = "Uruchamianie Jantar Kadry..."
-            textSize = 12f
+            text = "DIAGNOSTYKA JANTAR KADRY\nUruchamianie..."
+            textSize = 13f
             setTextColor(Color.BLACK)
-            setPadding(12, 12, 12, 12)
+            setPadding(16, 16, 16, 16)
         }
+
+        val scroll = ScrollView(this)
+        scroll.addView(status)
 
         webView = WebView(this)
 
-        layout.addView(status)
+        layout.addView(
+            scroll,
+            LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT,
+                180
+            )
+        )
+
         layout.addView(
             webView,
             LinearLayout.LayoutParams(
@@ -44,22 +64,20 @@ class MainActivity : Activity() {
 
         setContentView(layout)
 
+        WebView.setWebContentsDebuggingEnabled(true)
+
         webView.settings.apply {
             javaScriptEnabled = true
             domStorageEnabled = true
             databaseEnabled = true
-
             loadsImagesAutomatically = true
             useWideViewPort = true
             loadWithOverviewMode = true
-
             builtInZoomControls = true
             displayZoomControls = false
             setSupportZoom(true)
-
             javaScriptCanOpenWindowsAutomatically = true
             setSupportMultipleWindows(true)
-
             mixedContentMode =
                 WebSettings.MIXED_CONTENT_COMPATIBILITY_MODE
         }
@@ -71,15 +89,21 @@ class MainActivity : Activity() {
         webView.webChromeClient = object : WebChromeClient() {
 
             override fun onConsoleMessage(
-                consoleMessage: ConsoleMessage
+                message: ConsoleMessage
             ): Boolean {
-                status.text =
-                    "JAVASCRIPT ERROR:\n" +
-                    consoleMessage.message() +
-                    "\nLine: " +
-                    consoleMessage.lineNumber()
-
+                addLog(
+                    "JS ${message.messageLevel()}: " +
+                    message.message() +
+                    " | line: ${message.lineNumber()}"
+                )
                 return true
+            }
+
+            override fun onProgressChanged(
+                view: WebView?,
+                progress: Int
+            ) {
+                addLog("Завантаження: $progress%")
             }
         }
 
@@ -90,16 +114,34 @@ class MainActivity : Activity() {
                 url: String?,
                 favicon: android.graphics.Bitmap?
             ) {
-                status.text = "Ładowanie strony:\n$url"
+                addLog("Початок: $url")
             }
 
             override fun onPageFinished(
                 view: WebView?,
                 url: String?
             ) {
-                status.text =
-                    "Adres: $url\n" +
-                    "Title: ${view?.title ?: "brak"}"
+                addLog("Сторінка завершила завантаження.")
+                addLog("Адреса: $url")
+
+                view?.evaluateJavascript(
+                    """
+                    (function() {
+                        return JSON.stringify({
+                            readyState: document.readyState,
+                            title: document.title,
+                            bodyExists: !!document.body,
+                            bodyTextLength: document.body ?
+                                document.body.innerText.length : -1,
+                            htmlLength: document.body ?
+                                document.body.innerHTML.length : -1,
+                            userAgent: navigator.userAgent
+                        });
+                    })();
+                    """.trimIndent()
+                ) { result ->
+                    addLog("РЕЗУЛЬТАТ HTML:\n$result")
+                }
             }
 
             override fun onReceivedError(
@@ -108,23 +150,22 @@ class MainActivity : Activity() {
                 error: WebResourceError?
             ) {
                 if (request?.isForMainFrame == true) {
-                    status.text =
-                        "BŁĄD STRONY\n" +
-                        "Kod: ${error?.errorCode}\n" +
-                        "Opis: ${error?.description}\n" +
-                        "Adres: ${request.url}"
+                    addLog(
+                        "ПОМИЛКА: ${error?.errorCode} " +
+                        "${error?.description}"
+                    )
                 }
             }
 
             override fun onReceivedHttpError(
                 view: WebView?,
                 request: WebResourceRequest?,
-                errorResponse: WebResourceResponse?
+                response: WebResourceResponse?
             ) {
                 if (request?.isForMainFrame == true) {
-                    status.text =
-                        "HTTP ERROR: ${errorResponse?.statusCode}\n" +
-                        "Adres: ${request.url}"
+                    addLog(
+                        "HTTP: ${response?.statusCode}"
+                    )
                 }
             }
 
@@ -133,16 +174,17 @@ class MainActivity : Activity() {
                 handler: SslErrorHandler?,
                 error: android.net.http.SslError?
             ) {
-                status.text = "SSL ERROR: $error"
+                addLog("SSL ПОМИЛКА: $error")
                 handler?.cancel()
             }
         }
 
+        addLog("Відкриваю портал...")
         webView.loadUrl(portalUrl)
     }
 
     override fun onBackPressed() {
-        if (::webView.isInitialized && webView.canGoBack()) {
+        if (webView.canGoBack()) {
             webView.goBack()
         } else {
             super.onBackPressed()
@@ -150,9 +192,7 @@ class MainActivity : Activity() {
     }
 
     override fun onDestroy() {
-        if (::webView.isInitialized) {
-            webView.destroy()
-        }
+        webView.destroy()
         super.onDestroy()
     }
 }
