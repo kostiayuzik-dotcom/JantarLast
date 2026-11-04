@@ -14,7 +14,7 @@ class MainActivity : Activity() {
     private lateinit var status: TextView
 
     private val portalUrl =
-        "https://kadryonline.jantar.eu.com/xpertis/prv/view/0x915ac1"
+        "https://kadryonline.jantar.eu.com/xpertis/start"
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -23,11 +23,12 @@ class MainActivity : Activity() {
         layout.orientation = LinearLayout.VERTICAL
         layout.setBackgroundColor(Color.WHITE)
 
-        status = TextView(this)
-        status.text = "Uruchamianie Jantar Kadry..."
-        status.textSize = 14f
-        status.setTextColor(Color.BLACK)
-        status.setPadding(12, 12, 12, 12)
+        status = TextView(this).apply {
+            text = "Uruchamianie Jantar Kadry..."
+            textSize = 14f
+            setTextColor(Color.BLACK)
+            setPadding(12, 12, 12, 12)
+        }
 
         webView = WebView(this)
 
@@ -47,12 +48,17 @@ class MainActivity : Activity() {
             javaScriptEnabled = true
             domStorageEnabled = true
             databaseEnabled = true
-            useWideViewPort = true
-            loadWithOverviewMode = true
-            builtInZoomControls = true
-            displayZoomControls = false
+
+            loadsImagesAutomatically = true
             javaScriptCanOpenWindowsAutomatically = true
             setSupportMultipleWindows(true)
+
+            useWideViewPort = true
+            loadWithOverviewMode = true
+
+            builtInZoomControls = true
+            displayZoomControls = false
+
             mixedContentMode =
                 WebSettings.MIXED_CONTENT_COMPATIBILITY_MODE
         }
@@ -62,7 +68,6 @@ class MainActivity : Activity() {
             .setAcceptThirdPartyCookies(webView, true)
 
         webView.webChromeClient = object : WebChromeClient() {
-
             override fun onConsoleMessage(
                 consoleMessage: ConsoleMessage
             ): Boolean {
@@ -96,7 +101,7 @@ class MainActivity : Activity() {
             ) {
                 if (request?.isForMainFrame == true) {
                     status.text =
-                        "BŁĄD STRONY:\n" +
+                        "BŁĄD STRONY\n" +
                         "Kod: ${error?.errorCode}\n" +
                         "Opis: ${error?.description}\n" +
                         "Adres: ${request.url}"
@@ -120,13 +125,11 @@ class MainActivity : Activity() {
                 handler: SslErrorHandler?,
                 error: android.net.http.SslError?
             ) {
-                status.text =
-                    "BŁĄD SSL:\n${error?.toString()}"
+                status.text = "BŁĄD SSL: ${error}"
                 handler?.cancel()
             }
         }
 
-        status.text = "Otwieranie portalu..."
         webView.loadUrl(portalUrl)
     }
 
