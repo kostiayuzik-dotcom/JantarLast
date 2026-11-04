@@ -3,7 +3,6 @@ package pl.jantar.kadryonline
 import android.app.Activity
 import android.os.Bundle
 import android.graphics.Color
-import android.view.Gravity
 import android.webkit.*
 import android.widget.LinearLayout
 import android.widget.TextView
@@ -19,13 +18,14 @@ class MainActivity : Activity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
-        val layout = LinearLayout(this)
-        layout.orientation = LinearLayout.VERTICAL
-        layout.setBackgroundColor(Color.WHITE)
+        val layout = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            setBackgroundColor(Color.WHITE)
+        }
 
         status = TextView(this).apply {
             text = "Uruchamianie Jantar Kadry..."
-            textSize = 14f
+            textSize = 13f
             setTextColor(Color.BLACK)
             setPadding(12, 12, 12, 12)
         }
@@ -48,10 +48,7 @@ class MainActivity : Activity() {
             javaScriptEnabled = true
             domStorageEnabled = true
             databaseEnabled = true
-
             loadsImagesAutomatically = true
-            javaScriptCanOpenWindowsAutomatically = true
-            setSupportMultipleWindows(true)
 
             useWideViewPort = true
             loadWithOverviewMode = true
@@ -59,8 +56,16 @@ class MainActivity : Activity() {
             builtInZoomControls = true
             displayZoomControls = false
 
+            javaScriptCanOpenWindowsAutomatically = true
+            setSupportMultipleWindows(true)
+
             mixedContentMode =
                 WebSettings.MIXED_CONTENT_COMPATIBILITY_MODE
+
+            userAgentString =
+                "Mozilla/5.0 (Linux; Android 16) " +
+                "AppleWebKit/537.36 (KHTML, like Gecko) " +
+                "Chrome/120.0.0.0 Mobile Safari/537.36"
         }
 
         CookieManager.getInstance().setAcceptCookie(true)
@@ -68,11 +73,14 @@ class MainActivity : Activity() {
             .setAcceptThirdPartyCookies(webView, true)
 
         webView.webChromeClient = object : WebChromeClient() {
+
             override fun onConsoleMessage(
                 consoleMessage: ConsoleMessage
             ): Boolean {
                 status.text =
-                    "JavaScript: ${consoleMessage.message()}"
+                    "JAVASCRIPT ERROR:\n" +
+                    consoleMessage.message() +
+                    "\nLine: " + consoleMessage.lineNumber()
                 return true
             }
         }
@@ -84,14 +92,16 @@ class MainActivity : Activity() {
                 url: String?,
                 favicon: android.graphics.Bitmap?
             ) {
-                status.text = "Ładowanie: $url"
+                status.text = "Ładowanie:\n$url"
             }
 
             override fun onPageFinished(
                 view: WebView?,
                 url: String?
             ) {
-                status.text = "Adres: $url"
+                status.text =
+                    "Adres: $url\n" +
+                    "Title: ${view?.title ?: "null"}"
             }
 
             override fun onReceivedError(
@@ -125,7 +135,7 @@ class MainActivity : Activity() {
                 handler: SslErrorHandler?,
                 error: android.net.http.SslError?
             ) {
-                status.text = "BŁĄD SSL: ${error}"
+                status.text = "SSL ERROR: $error"
                 handler?.cancel()
             }
         }
